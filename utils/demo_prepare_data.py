@@ -61,3 +61,21 @@ def prepare_data(pupil_shape, N):
 
     print("Data prepeation finished!")
     return pupil, scale, dataset, tset, vset, psfs, phases, psfs_train, phases_train, xi, alphas, betas, psf_basis, psf_flat_cen, betas, alphas
+
+
+def gen_dataset(N, pupil_shape):
+    L = 10
+    N = 128
+    pupil, scale = pupil_dataset(pupil_shape, N)
+    alphas = 4 * (torch.rand(L, 21) - 0.5)
+    alphas[:, :3] = 0
+    phases = zern_abb(
+        N, alphas, 0.4681
+    )  # 0.4681 for fairness across pupil shapes (explained in supp)
+    psfs = psf(pupil, phases)
+
+    tset = torch.utils.data.TensorDataset(
+        psfs[:L],
+        phases[:L],
+    )
+    torch.save(tset, f"datasets/table1_{pupil_shape}_{N}_demo.pt")
