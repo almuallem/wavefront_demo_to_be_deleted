@@ -33,12 +33,13 @@ def gen_training_dataset(pupil_shape):
         phases[L - save_for_val :],
     )
 
-    torch.save(tset, f"../datasets/y_phi_{pupil_shape}_{N}_train.pt")
-    torch.save(vset, f"../datasets/y_phi_{pupil_shape}_{N}_val.pt")
+    torch.save(tset, f"datasets/y_phi_{pupil_shape}_{N}_train.pt")
+    torch.save(vset, f"datasets/y_phi_{pupil_shape}_{N}_val.pt")
 
 
 if __name__ == "__main__":
     gen_training_dataset("circle")
     gen_training_dataset("triangle")
     gen_training_dataset("pentagon")
+
 
