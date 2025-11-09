@@ -217,3 +217,48 @@ def parse_metrics(output_string):
     std = float(parts[1].split(',')[0])
     return mean, std
 
+def plot_experiment_results(all_psfs, all_phases, all_pupil):
+    """Iterates through all collected experiment data and plots the PSF and Phase comparisons."""
+    
+    psf_titles = ["Ground Truth PSF", "PSF Gerchberg Saxton", "PSF HIO", "PSF S2P"]
+    phase_titles = ["Ground Truth Phase", "Phase Gerchberg Saxton", "Phase HIO", "Phase S2P"]
+    
+    # Iterate over each completed experiment
+    for exp_key in all_psfs.keys():
+        print(f"\n--- Displaying Plots for Experiment: {exp_key} ---")
+        
+        psf_data_list = all_psfs[exp_key] # [psfs, psfgs, psfhio, psfs2p]
+        phase_data_list = all_phases[exp_key] # [phases, phigs, phihio, phis2p]
+        pupil = all_pupil[exp_key]
+
+        # The data lists contain tensors of shape (N_samples, N, N)
+        # We will iterate over the first 4 samples for visualization
+        for i in range(4):
+            plt.figure(figsize=(18, 10))
+            
+            # Plot PSFs (Row 1)
+            for j in range(4):
+                plt.subplot(2, 4, j + 1)
+                plt.title(psf_titles[j] + f" (Sample {i})")
+                # Detach and convert to numpy for plotting
+                plt.imshow(psf_data_list[j][i].detach().cpu().numpy())
+                
+            # Plot Phases (Row 2)
+            for j in range(4):
+                plt.subplot(2, 4, j + 5)
+                plt.title(phase_titles[j] + f" (Sample {i})")
+                
+                phase_to_plot = phase_data_list[j][i].detach().cpu().numpy()
+                pupil_np = pupil.detach().cpu().numpy()
+                
+                if j == 0: # Ground Truth Phase
+                    # Original code applied pupil mask to ground truth
+                    plt.imshow(phase_to_plot * pupil_np) 
+                else:
+                    # For estimated phases, just show the result
+                    plt.imshow(phase_to_plot) 
+
+            # Optional: Add tight_layout to prevent overlap
+            plt.tight_layout()
+            plt.show()
+            print("\n" + "-"*80 + "\n")
