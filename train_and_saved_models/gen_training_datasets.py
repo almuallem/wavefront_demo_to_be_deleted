@@ -13,7 +13,7 @@ from utils.dataset_prep import pupil_dataset
 
 
 def gen_training_dataset(pupil_shape):
-    L = 25000
+    L = 500#25000
     N = 128
     pupil, scale = pupil_dataset(pupil_shape, N)
     alphas = 4 * (torch.rand(L, 21) - 0.5)
@@ -41,3 +41,4 @@ if __name__ == "__main__":
     gen_training_dataset("circle")
     gen_training_dataset("triangle")
     gen_training_dataset("pentagon")
+
