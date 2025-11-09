@@ -69,6 +69,9 @@ def run_experiment(pupil_shape, N, inr=False, data = None):
     # betas = psf_flat_cen @ torch.linalg.pinv(psf_basis[:100].reshape(100, -1))
     # alphas = phases.reshape(phases.shape[0], -1) @ torch.linalg.pinv(xi.reshape(21, -1))
 
+    # Dictionary to store results: {'method': [pr_mean, pr_std, we_mean, we_std, time]}
+    results = {}
+    
     # Projection methods
     # Gerchberg-Saxton
     print("Running the Gerchberg Saxton")
@@ -78,9 +81,16 @@ def run_experiment(pupil_shape, N, inr=False, data = None):
     elapsed_time = end_time - start_time
     psf_hat = psf(pupil, out)
     
-    print(
-        f"Gerchberg-Saxton, PR: {torch.mean(corr(psf_hat, psfs))} +- {torch.std(corr(psf_hat, psfs))}, WE:  {torch.mean(strehl(out, phases, pupil))} +- {torch.std(strehl(out, phases, pupil))}. Elapsed time: {elapsed_time} seconds"
-    )
+    # print(
+    #     f"Gerchberg-Saxton, PR: {torch.mean(corr(psf_hat, psfs))} +- {torch.std(corr(psf_hat, psfs))}, WE:  {torch.mean(strehl(out, phases, pupil))} +- {torch.std(strehl(out, phases, pupil))}. Elapsed time: {elapsed_time} seconds"
+    # )
+
+    pr_mean_gs = torch.mean(corr(psf_hat, psfs)).item()
+    pr_std_gs = torch.std(corr(psf_hat, psfs)).item()
+    we_mean_gs = torch.mean(strehl(out, phases, pupil)).item()
+    we_std_gs = torch.std(strehl(out, phases, pupil)).item()
+
+    results['Gerchberg-Saxton'] = [pr_mean_gs, pr_std_gs, we_mean_gs, we_std_gs, elapsed_time]
 
     phigs, psfgs = out * 1.0, psf_hat * 1.0
 
@@ -91,9 +101,16 @@ def run_experiment(pupil_shape, N, inr=False, data = None):
     end_time = time.perf_counter()
     elapsed_time = end_time - start_time
     psf_hat = psf(pupil, out)
-    print(
-        f"HIO, PR: {torch.mean(corr(psf_hat, psfs))} +- {torch.std(corr(psf_hat, psfs))}, WE:  {torch.mean(strehl(out, phases, pupil))} +- {torch.std(strehl(out, phases, pupil))}. Elapsed time: {elapsed_time} seconds"
-    )
+    # print(
+    #     f"HIO, PR: {torch.mean(corr(psf_hat, psfs))} +- {torch.std(corr(psf_hat, psfs))}, WE:  {torch.mean(strehl(out, phases, pupil))} +- {torch.std(strehl(out, phases, pupil))}. Elapsed time: {elapsed_time} seconds"
+    # )
+
+    pr_mean_hio = torch.mean(corr(psf_hat, psfs)).item()
+    pr_std_hio = torch.std(corr(psf_hat, psfs)).item()
+    we_mean_hio = torch.mean(strehl(out, phases, pupil)).item()
+    we_std_hio = torch.std(strehl(out, phases, pupil)).item()
+
+    results['HIO'] = [pr_mean_hio, pr_std_hio, we_mean_hio, we_std_hio, elapsed_time]
 
     phihio, psfhio = out * 1.0, psf_hat * 1.0
 
@@ -141,46 +158,62 @@ def run_experiment(pupil_shape, N, inr=False, data = None):
     end_time = time.perf_counter()
     elapsed_time = end_time - start_time
     psf_hat = psf(pupil, out)
-    print(
-        f"S2P, PR: {torch.mean(corr(psf_hat, psfs))} +- {torch.std(corr(psf_hat, psfs))}, WE:  {torch.mean(strehl(out, phases, pupil))} +- {torch.std(strehl(out, phases, pupil))}.  Elapsed time: {elapsed_time} second."
-    )
+    # print(
+    #     f"S2P, PR: {torch.mean(corr(psf_hat, psfs))} +- {torch.std(corr(psf_hat, psfs))}, WE:  {torch.mean(strehl(out, phases, pupil))} +- {torch.std(strehl(out, phases, pupil))}.  Elapsed time: {elapsed_time} second."
+    # )
+
+    pr_mean_s2p = torch.mean(corr(psf_hat, psfs)).item()
+    pr_std_s2p = torch.std(corr(psf_hat, psfs)).item()
+    we_mean_s2p = torch.mean(strehl(out, phases, pupil)).item()
+    we_std_s2p = torch.std(strehl(out, phases, pupil)).item()
+    
+    results['S2P'] = [pr_mean_s2p, pr_std_s2p, we_mean_s2p, we_std_s2p, elapsed_time]
+
     phis2p, psfs2p = out * 1.0, psf_hat * 1.0
-    with torch.no_grad():
-        for i in range(4):
-            plt.figure(figsize=(18, 10))
-            plt.subplot(2, 4, 1)
-            plt.title("Ground Truth PSF")
-            plt.imshow(psfs[i]) # Ground Truth PSF
+    # with torch.no_grad():
+    #     for i in range(4):
+    #         plt.figure(figsize=(18, 10))
+    #         plt.subplot(2, 4, 1)
+    #         plt.title("Ground Truth PSF")
+    #         plt.imshow(psfs[i]) # Ground Truth PSF
             
-            plt.subplot(2, 4, 2)
-            plt.title("PSF Gerchberg Saxton")
-            plt.imshow(psfgs[i])
+    #         plt.subplot(2, 4, 2)
+    #         plt.title("PSF Gerchberg Saxton")
+    #         plt.imshow(psfgs[i])
             
-            plt.subplot(2, 4, 3)
-            plt.title("PSF HIO")
-            plt.imshow(psfhio[i])
+    #         plt.subplot(2, 4, 3)
+    #         plt.title("PSF HIO")
+    #         plt.imshow(psfhio[i])
 
-            plt.subplot(2, 4, 4)
-            plt.title("PSF S2P")
-            plt.imshow(psfs2p[i])
+    #         plt.subplot(2, 4, 4)
+    #         plt.title("PSF S2P")
+    #         plt.imshow(psfs2p[i])
 
-            # Row 2: Phases
-            plt.subplot(2, 4, 5)
-            plt.title("Ground Truth Phase")
-            plt.imshow(phases[i] * pupil) # Ground Truth Phase
+    #         # Row 2: Phases
+    #         plt.subplot(2, 4, 5)
+    #         plt.title("Ground Truth Phase")
+    #         plt.imshow(phases[i] * pupil) # Ground Truth Phase
 
-            plt.subplot(2, 4, 6)
-            plt.title("Phase Gerchberg Saxton")
-            plt.imshow(phigs[i])
+    #         plt.subplot(2, 4, 6)
+    #         plt.title("Phase Gerchberg Saxton")
+    #         plt.imshow(phigs[i])
 
-            plt.subplot(2, 4, 7)
-            plt.title("Phase HIO")
-            plt.imshow(phihio[i])
+    #         plt.subplot(2, 4, 7)
+    #         plt.title("Phase HIO")
+    #         plt.imshow(phihio[i])
 
-            plt.subplot(2, 4, 8)
-            plt.title("Phase S2P")
-            plt.imshow(phis2p[i])
+    #         plt.subplot(2, 4, 8)
+    #         plt.title("Phase S2P")
+    #         plt.imshow(phis2p[i])
             
-            # Optional: Add tight_layout to prevent overlap
-            plt.tight_layout()
-            plt.show()
+    #         # Optional: Add tight_layout to prevent overlap
+    #         plt.tight_layout()
+    #         plt.show()
+    return results, [psfs, psfgs, psfhio, psfs2p], [phases, phigs, phihio, phis2p], pupil
+
+def parse_metrics(output_string):
+    parts = output_string.split(' +- ')
+    mean = float(parts[0].split(': ')[-1])
+    std = float(parts[1].split(',')[0])
+    return mean, std
+
