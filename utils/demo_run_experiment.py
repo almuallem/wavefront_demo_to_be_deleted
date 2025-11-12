@@ -343,6 +343,8 @@ def create_gif_with_colorbar(GS_preds_np, discard_every = 5, output_dir="output"
         # Add the frame counter text
         current_iter = discard_every * (i)
         counter_text = f"Iter: {current_iter} / {total_iterations}"
+        if total_iterations == 1:
+            counter_text = f"Iter: {1} / {total_iterations}"
         ax.text(
             0.05, 0.95, 
             counter_text, 
