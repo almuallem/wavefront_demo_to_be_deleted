@@ -5,13 +5,16 @@ import torch
 from utils.fourier import ft2, ift2
 from tqdm import tqdm
 
-def gerchberg_saxton(sqrt_psf, pupil, max_iter, init_guess=None, device="cpu"):
+def gerchberg_saxton(sqrt_psf, pupil, max_iter, init_guess=None, device="cpu", return_predictions = False):
     phase_x = torch.rand(*sqrt_psf.shape, device=device) - 0.5
     amplitude_x = sqrt_psf.to(device) * 1.0
     phase_f = torch.rand(*sqrt_psf.shape, device=device) - 0.5
     amplitude_f = pupil.to(device) * 1.0
 
     signal_x = amplitude_x * torch.exp(1j * phase_x)
+    
+    if return_predictions:
+        predictions = [] #To hold all the predicted phases
 
     for its in tqdm(range(max_iter)):
         signal_f = amplitude_f * ift2(signal_x, device=device)
@@ -20,8 +23,13 @@ def gerchberg_saxton(sqrt_psf, pupil, max_iter, init_guess=None, device="cpu"):
         signal_x = ft2(signal_f, device=device)
         phase_x = torch.angle(signal_x)
         signal_x = amplitude_x * torch.exp(1j * phase_x)
+        if return_predictions:
+            predictions.append(phase_f * pupil)
+    if return_predictions:
 
-    return phase_f * pupil
+        return phase_f * pupil, predictions
+    else:
+        return phase_f * pupil
 
 
 # def fienup_hio(sqrt_psf, pupil, max_iter, beta=0.5, init_guess=None, device="cpu"):
@@ -48,7 +56,7 @@ def gerchberg_saxton(sqrt_psf, pupil, max_iter, init_guess=None, device="cpu"):
 #     return torch.angle(sigf) * pupil
 
 
-def fienup_hio(sqrt_psf, pupil, max_iter, beta=0.5, init_guess=None, device="cpu"):
+def fienup_hio(sqrt_psf, pupil, max_iter, beta=0.5, init_guess=None, device="cpu", return_predictions = False):
     # Ensure proper tensor setup
     pupil = pupil.to(device).float()
     sqrt_psf = sqrt_psf.to(device).float()
@@ -63,6 +71,8 @@ def fienup_hio(sqrt_psf, pupil, max_iter, beta=0.5, init_guess=None, device="cpu
         sigf = init_guess.to(device)
 
     # Main iteration loop
+
+    predictions = []
     for _ in tqdm(range(max_iter)):
         # Fourier domain update
         sigf_ft = ft2(sigf, device=device)
@@ -77,5 +87,10 @@ def fienup_hio(sqrt_psf, pupil, max_iter, beta=0.5, init_guess=None, device="cpu
             sigx_ift,  # Inside support: use direct update
             sigf - beta * sigx_ift,  # Outside support: apply feedback
         )
+        if return_predictions:
+            predictions.append(torch.angle(sigf) * pupil)
 
-    return torch.angle(sigf) * pupil  # Return phase within support
+    if return_predictions:
+        return torch.angle(sigf) * pupil, predictions
+    else:
+        return torch.angle(sigf) * pupil  # Return phase within support
