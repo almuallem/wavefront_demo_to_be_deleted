@@ -17,6 +17,18 @@ from dataset_prep import pupil_dataset
 from dataset_prep import s2p_alphas_betas
 from zernike import zernike_gram_schmidt
 import time
+import imageio.v3 as iio
+import numpy as np
+import os
+import matplotlib.pyplot as plt
+import matplotlib.cm as cm
+
+import os
+import glob
+import numpy as np
+from IPython.display import HTML, display
+from base64 import b64encode
+
 
 def run_experiment(pupil_shape, N, inr=False, data = None):
     print("Running a noiseless experiment with ", pupil_shape, " pupil of size ", str(N))
@@ -76,7 +88,7 @@ def run_experiment(pupil_shape, N, inr=False, data = None):
     # Gerchberg-Saxton
     print("Running the Gerchberg Saxton")
     start_time = time.perf_counter()
-    out = gerchberg_saxton(torch.sqrt(psfs), pupil.unsqueeze(0), 500)
+    out, GS_preds = gerchberg_saxton(torch.sqrt(psfs), pupil.unsqueeze(0), 500, return_predictions= True)
     end_time = time.perf_counter()
     elapsed_time = end_time - start_time
     psf_hat = psf(pupil, out)
@@ -97,7 +109,7 @@ def run_experiment(pupil_shape, N, inr=False, data = None):
     # Fienup's Hybrid Input-Output
     print("Running Fienup's HIO")
     start_time = time.perf_counter()
-    out = fienup_hio(torch.sqrt(psfs), pupil.unsqueeze(0), 500, beta=0.5)
+    out, HIO_preds= fienup_hio(torch.sqrt(psfs), pupil.unsqueeze(0), 500, beta=0.5, return_predictions= True)
     end_time = time.perf_counter()
     elapsed_time = end_time - start_time
     psf_hat = psf(pupil, out)
@@ -209,7 +221,7 @@ def run_experiment(pupil_shape, N, inr=False, data = None):
     #         # Optional: Add tight_layout to prevent overlap
     #         plt.tight_layout()
     #         plt.show()
-    return results, [psfs, psfgs, psfhio, psfs2p], [phases, phigs, phihio, phis2p], pupil
+    return results, [psfs, psfgs, psfhio, psfs2p], [phases, phigs, phihio, phis2p], pupil, GS_preds, HIO_preds
 
 def parse_metrics(output_string):
     parts = output_string.split(' +- ')
@@ -262,3 +274,150 @@ def plot_experiment_results(all_psfs, all_phases, all_pupil):
             plt.tight_layout()
             plt.show()
             print("\n" + "-"*80 + "\n")
+
+
+
+
+def create_gif_with_colorbar(GS_preds_np, output_dir="output", duration_ms=1000/30, cmap_name='twilight', plot_title="Phase Evolution: GS Algorithm"):
+    """
+    Generates a color GIF with a counter, a colorbar, and a title.
+
+    Args:
+        GS_preds_np (np.ndarray): The input phase array of shape (N, 1, H, W).
+        output_dir (str): The directory to save the output GIF.
+        duration_ms (float): The duration of each frame in milliseconds (ms).
+        cmap_name (str): The name of the Matplotlib colormap.
+        plot_title (str): The main title for the plot.
+    """
+    os.makedirs(output_dir, exist_ok=True)
+    # Using slice [::5] as found in your provided code
+    images_raw = GS_preds_np[::5, 0, :, :]
+    num_frames = images_raw.shape[0]
+    total_iterations = GS_preds_np.shape[0]
+
+    # 1. Normalize the Phase Data to the [0, 1] range
+    normalized_data = (images_raw + np.pi) / (2 * np.pi) 
+
+    # 2. Setup Matplotlib Figure and Colorbar
+    # fig, ax = plt.subplots(figsize=(5, 4)) 
+    # plt.close(fig)
+
+    # # Display the FIRST frame to set up the plot object for the colorbar
+    # im = ax.imshow(normalized_data[0], cmap=cmap_name, origin='lower', vmin=0, vmax=1)
+    
+    fig, ax = plt.subplots(figsize=(5.5, 4.2)) # Adjusted for a slightly wider image and small margin
+    plt.close(fig)
+
+    # Crucial for removing whitespace around the plot area itself
+    fig.subplots_adjust(left=0.001, right=0.92, top=0.9, bottom=0.05) 
+    # Adjust 'right' to ensure colorbar fits. 'left', 'top', 'bottom' to remove blank space.
+
+    # Display the FIRST frame to set up the plot object for the colorbar
+    im = ax.imshow(normalized_data[0], cmap=cmap_name, origin='lower', vmin=0, vmax=1)
+
+    # Hide axes ticks and labels on the image subplot for a cleaner look
+    ax.set_xticks([]); ax.set_yticks([])
+
+    # --- Add Colorbar ---
+    cbar = fig.colorbar(im, ax=ax, orientation='vertical', fraction=0.046, pad=0.04)
+    cbar.set_label('Phase (radians)', rotation=270, labelpad=15)
+    
+    # Set Colorbar ticks and labels to show the original phase range (-pi to pi)
+    cbar_ticks = np.linspace(0, 1, 5)
+    cbar.set_ticks(cbar_ticks)
+    cbar.set_ticklabels([r'$-\pi$', r'$-\pi/2$', r'$0$', r'$\pi/2$', r'$\pi$'])
+    
+    color_frames = []
+    print(f"Generating {num_frames} frames with counter, colorbar, and title at {1000/duration_ms:.2f} FPS...")
+
+    # 3. Process each frame
+    for i in range(num_frames):
+        # Update the image data and ensure axes are clear
+        ax.clear() 
+        im = ax.imshow(normalized_data[i], cmap=cmap_name, origin='lower', vmin=0, vmax=1) # Redraw image
+        ax.set_xticks([]); ax.set_yticks([]) # Keep axes clean
+        
+        # Add the main TITLE
+        ax.set_title(plot_title, color='black', fontsize=12)#, backgroundcolor='black')
+        
+        # Add the frame counter text
+        current_iter = 5 * (i)
+        counter_text = f"Iter: {current_iter} / {total_iterations}"
+        ax.text(
+            0.05, 0.95, 
+            counter_text, 
+            transform=ax.transAxes, 
+            color='white', 
+            fontsize=10, 
+            bbox={'facecolor': 'black', 'alpha': 0.6, 'pad': 2}
+        )
+
+        # Convert the Matplotlib figure (image + colorbar + title + counter) to a numpy array
+        fig.canvas.draw()
+        rgb_image = np.array(fig.canvas.renderer.buffer_rgba())[:, :, :3] 
+        color_frames.append(rgb_image)
+
+    # 4. Generate the GIF
+    output_filename = output_dir + f"/output_{plot_title}.gif"
+    #print(f"Generating GIF: {output_filename}...")
+    
+    iio.imwrite(
+        output_filename, 
+        color_frames,
+        duration=duration_ms, 
+        loop=0
+    )
+
+
+
+def display_gifs_side_by_side(gif_directory="output"):
+    """
+    Reads all GIF files from a directory, Base64 encodes them, and displays
+    them side-by-side in a Jupyter/Colab notebook using HTML flexbox layout.
+    """
+    
+    # 1. Find all GIF files
+    search_pattern = os.path.join(gif_directory, "*.gif")
+    gif_files = sorted(glob.glob(search_pattern))
+    
+    if not gif_files:
+        print(f"No GIF files found in '{gif_directory}'. Please check the directory and file extensions.")
+        return
+
+    # 2. Prepare HTML content for each GIF
+    html_elements = []
+    labels = []
+    width_percent = 100 / len(gif_files)
+    
+    for filename in gif_files:
+        # Read the file data
+        with open(filename, 'rb') as f:
+            gif_data = f.read()
+            
+        # Base64 encode the data
+        data_url = "data:image/gif;base64," + b64encode(gif_data).decode()
+        
+        # Get a label from the filename (e.g., "output_30FPS_colorbar_twilight.gif" -> "twilight")
+        label = os.path.basename(filename).split('_')[-1].replace('.gif', '').capitalize()
+        labels.append(label)
+        
+        # HTML for the image container (the image itself and a label beneath it)
+        gif_html = f"""
+        <div style="flex: 1 1 {width_percent}%; text-align: center; margin: 5px;">
+            <img src="{data_url}" style="width: 100%; height: auto; border: 1px solid #ccc;">
+            <p style="margin-top: 5px; font-weight: bold;">{label}</p>
+        </div>
+        """
+        html_elements.append(gif_html)
+
+    # 3. Assemble the final HTML string with a flex container
+    html_output = f"""
+    <div style="display: flex; flex-direction: row; justify-content: space-around; width: 100%;">
+        {''.join(html_elements)}
+    </div>
+    """
+    
+    # 4. Display the HTML in the notebook
+    display(HTML(html_output))
+    #print(f"Successfully displayed {len(gif_files)} GIFs side-by-side.")
+    
