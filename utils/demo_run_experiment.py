@@ -328,7 +328,7 @@ def create_gif_with_colorbar(GS_preds_np, output_dir="output", duration_ms=1000/
     cbar.set_ticklabels([r'$-\pi$', r'$-\pi/2$', r'$0$', r'$\pi/2$', r'$\pi$'])
     
     color_frames = []
-    print(f"Generating {num_frames} frames with counter, colorbar, and title at {1000/duration_ms:.2f} FPS...")
+    #print(f"Generating {num_frames} frames with counter, colorbar, and title at {1000/duration_ms:.2f} FPS...")
 
     # 3. Process each frame
     for i in range(num_frames):
