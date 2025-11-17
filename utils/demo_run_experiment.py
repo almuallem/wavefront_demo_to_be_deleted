@@ -295,7 +295,7 @@ def create_gif_with_colorbar(GS_preds_np, discard_every = 5, discard_last = 400,
     
     total_iterations = GS_preds_np.shape[0]
     total_iterations = (total_iterations-discard_last) // discard_every
-    num_frames = total_iterations
+    num_frames = GS_preds_np.shape[0] if GS_preds_np.shape[0]==1 else total_iterations
     # 1. Normalize the Phase Data to the [0, 1] range
     normalized_data = (images_raw + np.pi) / (2 * np.pi) 
 
