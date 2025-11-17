@@ -292,9 +292,10 @@ def create_gif_with_colorbar(GS_preds_np, discard_every = 5, discard_last = 400,
     os.makedirs(output_dir, exist_ok=True)
     # Using slice [::5] as found in your provided code
     images_raw = GS_preds_np[:discard_last:discard_every, 0, :, :]
-    num_frames = images_raw.shape[0]
+    
     total_iterations = GS_preds_np.shape[0]
     total_iterations = (total_iterations-discard_last) // discard_every
+    num_frames = total_iterations
     # 1. Normalize the Phase Data to the [0, 1] range
     normalized_data = (images_raw + np.pi) / (2 * np.pi) 
 
